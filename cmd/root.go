@@ -29,7 +29,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "router password (or set MOVISTAR_PASSWORD env var)")
+	rootCmd.PersistentFlags().StringVar(&password, "password", "", "router password (or set MOVISTAR_PASSWORD env var)")
 }
 
 const credentialsFile = ".config/Movistar/credentials"
