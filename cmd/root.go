@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	movistarapi "github.com/nuriofernandez/movistarapi"
 	"github.com/nuriofernandez/movistarapi/hgu"
 	"github.com/spf13/cobra"
@@ -15,15 +16,15 @@ import (
 var password string
 
 var rootCmd = &cobra.Command{
-	Use:          "movistarcli",
-	Short:        "CLI for Movistar HGU router management",
-	Long:         "Control and configure your Movistar HGU router from the command line.",
-	SilenceUsage: true,
+	Use:           "movistarcli",
+	Short:         "CLI for Movistar HGU router management",
+	Long:          "Control and configure your Movistar HGU router from the command line.",
+	SilenceErrors: true,
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		color.New(color.FgRed).Fprintf(os.Stderr, "Error: %s\n", err)
 		os.Exit(1)
 	}
 }
