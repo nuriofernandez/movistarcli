@@ -80,7 +80,6 @@ var (
 	portIntStart  int
 	portEnabled   bool
 	portInterface string
-	portId        int
 )
 
 var portsAddCmd = &cobra.Command{
@@ -114,32 +113,60 @@ var portsAddCmd = &cobra.Command{
 }
 
 var portsUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   "update <id>",
 	Short: "Update an existing port forwarding rule",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid id %q: must be a number", args[0])
+		}
 		session, err := getSession()
 		if err != nil {
 			return err
 		}
-		extEnd := portExtEnd
-		if extEnd == 0 {
-			extEnd = portExtStart
+		ports, err := session.OpenPorts()
+		if err != nil {
+			return fmt.Errorf("could not get port rules: %w", err)
 		}
-		port := hgu.OpenPort{
-			Id:                portId,
-			Name:              portName,
-			Protocol:          hgu.Protocol(portProtocol),
-			Address:           portAddress,
-			ExternalPortStart: portExtStart,
-			ExternalPortEnd:   extEnd,
-			InternalPortStart: portIntStart,
-			Enabled:           portEnabled,
-			Interface:         portInterface,
+		var port *hgu.OpenPort
+		for i := range ports {
+			if ports[i].Id == id {
+				port = &ports[i]
+				break
+			}
 		}
-		if err := session.UpdatePort(port); err != nil {
+		if port == nil {
+			return fmt.Errorf("port rule %d not found", id)
+		}
+		if cmd.Flags().Changed("name") {
+			port.Name = portName
+		}
+		if cmd.Flags().Changed("protocol") {
+			port.Protocol = hgu.Protocol(portProtocol)
+		}
+		if cmd.Flags().Changed("address") {
+			port.Address = portAddress
+		}
+		if cmd.Flags().Changed("ext-start") {
+			port.ExternalPortStart = portExtStart
+		}
+		if cmd.Flags().Changed("ext-end") {
+			port.ExternalPortEnd = portExtEnd
+		}
+		if cmd.Flags().Changed("int-start") {
+			port.InternalPortStart = portIntStart
+		}
+		if cmd.Flags().Changed("enabled") {
+			port.Enabled = portEnabled
+		}
+		if cmd.Flags().Changed("interface") {
+			port.Interface = portInterface
+		}
+		if err := session.UpdatePort(*port); err != nil {
 			return fmt.Errorf("could not update port rule: %w", err)
 		}
-		color.Green("Port rule %d updated.", portId)
+		color.Green("Port rule %d updated.", id)
 		return nil
 	},
 }
@@ -181,17 +208,70 @@ var portsDeleteCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(portsCmd)
-	portsCmd.AddCommand(portsListCmd, portsAddCmd, portsUpdateCmd, portsDeleteCmd)
+	portsCmd.AddCommand(portsListCmd, portsAddCmd, portsUpdateCmd, portsDeleteCmd, portsEnableCmd, portsDisableCmd)
 
-	addPortFlags(portsAddCmd, false)
-	addPortFlags(portsUpdateCmd, true)
+	addPortFlags(portsAddCmd)
+	addPortFlags(portsUpdateCmd)
 }
 
-func addPortFlags(cmd *cobra.Command, requireId bool) {
-	if requireId {
-		cmd.Flags().IntVar(&portId, "id", 0, "port rule ID to update")
-		_ = cmd.MarkFlagRequired("id")
+func setEnabled(id int, enabled bool) error {
+	session, err := getSession()
+	if err != nil {
+		return err
 	}
+	ports, err := session.OpenPorts()
+	if err != nil {
+		return fmt.Errorf("could not get port rules: %w", err)
+	}
+	var port *hgu.OpenPort
+	for i := range ports {
+		if ports[i].Id == id {
+			port = &ports[i]
+			break
+		}
+	}
+	if port == nil {
+		return fmt.Errorf("port rule %d not found", id)
+	}
+	port.Enabled = enabled
+	return session.UpdatePort(*port)
+}
+
+var portsEnableCmd = &cobra.Command{
+	Use:   "enable <id>",
+	Short: "Enable a port forwarding rule",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid id %q: must be a number", args[0])
+		}
+		if err := setEnabled(id, true); err != nil {
+			return err
+		}
+		color.Green("Port rule %d enabled.", id)
+		return nil
+	},
+}
+
+var portsDisableCmd = &cobra.Command{
+	Use:   "disable <id>",
+	Short: "Disable a port forwarding rule",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid id %q: must be a number", args[0])
+		}
+		if err := setEnabled(id, false); err != nil {
+			return err
+		}
+		color.Yellow("Port rule %d disabled.", id)
+		return nil
+	},
+}
+
+func addPortFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&portName, "name", "", "rule name (max 16 chars)")
 	cmd.Flags().StringVar(&portProtocol, "protocol", "TCP", "protocol: TCP, UDP, or BOTH")
 	cmd.Flags().StringVar(&portAddress, "address", "", "target device IP address")
@@ -200,8 +280,10 @@ func addPortFlags(cmd *cobra.Command, requireId bool) {
 	cmd.Flags().IntVar(&portIntStart, "int-start", 0, "internal port (maps from ext-start)")
 	cmd.Flags().BoolVar(&portEnabled, "enabled", true, "enable the rule")
 	cmd.Flags().StringVar(&portInterface, "interface", "ppp0.1", "WAN interface")
-	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("address")
-	_ = cmd.MarkFlagRequired("ext-start")
-	_ = cmd.MarkFlagRequired("int-start")
+	if cmd == portsAddCmd {
+		_ = cmd.MarkFlagRequired("name")
+		_ = cmd.MarkFlagRequired("address")
+		_ = cmd.MarkFlagRequired("ext-start")
+		_ = cmd.MarkFlagRequired("int-start")
+	}
 }
