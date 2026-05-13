@@ -2,7 +2,7 @@
 
 Unofficial CLI for managing your Movistar HGU router from the terminal. (tested on Askey RTF3505VW).
 
-![](https://i.imgur.com/IYUaMWK.png)
+![](https://i.imgur.com/JAAI9R6.png)
 
 ## Installation
 
