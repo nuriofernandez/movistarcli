@@ -2,13 +2,27 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 
+	"github.com/fatih/color"
 	"github.com/nuriofernandez/movistarapi/hgu"
 	"github.com/spf13/cobra"
 )
+
+var (
+	colorTCP  = color.New(color.FgCyan).SprintFunc()
+	colorUDP  = color.New(color.FgYellow).SprintFunc()
+	colorBOTH = color.New(color.FgMagenta).SprintFunc()
+)
+
+func colorizeProtocol(line string) string {
+	line = strings.ReplaceAll(line, "TCP", colorTCP("TCP"))
+	line = strings.ReplaceAll(line, "UDP", colorUDP("UDP"))
+	line = strings.ReplaceAll(line, "BOTH", colorBOTH("BOTH"))
+	return line
+}
 
 var portsCmd = &cobra.Command{
 	Use:   "ports",
@@ -39,21 +53,21 @@ func listPorts() error {
 		fmt.Println("No port forwarding rules found.")
 		return nil
 	}
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tPROTOCOL\tADDRESS\tEXT PORTS\tINT PORT\tINTERFACE\tENABLED")
-	for _, p := range ports {
-		extPorts := strconv.Itoa(p.ExternalPortStart)
-		if p.ExternalPortEnd != p.ExternalPortStart {
-			extPorts = fmt.Sprintf("%d-%d", p.ExternalPortStart, p.ExternalPortEnd)
+	printTable("ID\tNAME\tPROTOCOL\tADDRESS\tEXT PORTS\tINT PORT\tINTERFACE\tENABLED", func(w *tabwriter.Writer) {
+		for _, p := range ports {
+			extPorts := strconv.Itoa(p.ExternalPortStart)
+			if p.ExternalPortEnd != p.ExternalPortStart {
+				extPorts = fmt.Sprintf("%d-%d", p.ExternalPortStart, p.ExternalPortEnd)
+			}
+			enabled := "no"
+			if p.Enabled {
+				enabled = "yes"
+			}
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
+				p.Id, p.Name, p.Protocol, p.Address, extPorts, p.InternalPortStart, p.Interface, enabled)
 		}
-		enabled := "yes"
-		if !p.Enabled {
-			enabled = "no"
-		}
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
-			p.Id, p.Name, p.Protocol, p.Address, extPorts, p.InternalPortStart, p.Interface, enabled)
-	}
-	return w.Flush()
+	}, colorizeProtocol)
+	return nil
 }
 
 // flags shared by add and update
@@ -94,7 +108,7 @@ var portsAddCmd = &cobra.Command{
 		if err := session.OpenPort(port); err != nil {
 			return fmt.Errorf("could not add port rule: %w", err)
 		}
-		fmt.Printf("Port rule %q added.\n", portName)
+		color.Green("Port rule %q added.", portName)
 		return nil
 	},
 }
@@ -125,7 +139,7 @@ var portsUpdateCmd = &cobra.Command{
 		if err := session.UpdatePort(port); err != nil {
 			return fmt.Errorf("could not update port rule: %w", err)
 		}
-		fmt.Printf("Port rule %d updated.\n", portId)
+		color.Green("Port rule %d updated.", portId)
 		return nil
 	},
 }
@@ -160,7 +174,7 @@ var portsDeleteCmd = &cobra.Command{
 		if err := session.DeletePort(id, iface); err != nil {
 			return fmt.Errorf("could not delete port rule: %w", err)
 		}
-		fmt.Printf("Port rule %d deleted.\n", id)
+		color.Green("Port rule %d deleted.", id)
 		return nil
 	},
 }

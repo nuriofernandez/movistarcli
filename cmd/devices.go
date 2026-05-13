@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -24,17 +23,17 @@ var devicesCmd = &cobra.Command{
 			fmt.Println("No devices found.")
 			return nil
 		}
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tIP ADDRESS\tMAC ADDRESS\tCONNECTION\tOPEN PORTS")
-		for _, d := range devices {
-			openPorts := "no"
-			if d.OpenPorts {
-				openPorts = "yes"
+		printTable("NAME\tIP ADDRESS\tMAC ADDRESS\tCONNECTION\tOPEN PORTS", func(w *tabwriter.Writer) {
+			for _, d := range devices {
+				openPorts := "no"
+				if d.OpenPorts {
+					openPorts = "yes"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+					d.Name, d.IPAddress, d.MacAddress, d.ConnectionType, openPorts)
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-				d.Name, d.IPAddress, d.MacAddress, d.ConnectionType, openPorts)
-		}
-		return w.Flush()
+		}, nil)
+		return nil
 	},
 }
 

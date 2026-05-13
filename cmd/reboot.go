@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,7 @@ var rebootCmd = &cobra.Command{
 		if err := session.Reboot(); err != nil {
 			return fmt.Errorf("reboot failed: %w", err)
 		}
-		fmt.Println("Router is rebooting...")
+		color.Yellow("Router is rebooting...")
 		return nil
 	},
 }
