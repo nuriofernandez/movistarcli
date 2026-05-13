@@ -6,6 +6,14 @@ Unofficial CLI for managing your Movistar HGU router from the terminal. (tested 
 
 ## Installation
 
+### On Archlinux (AUR)
+
+```bash
+yay -S movistarcli
+```
+
+### On any other device
+
 ```bash
 go install github.com/nuriofernandez/movistarcli@latest
 ```
