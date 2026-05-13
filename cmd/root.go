@@ -15,7 +15,7 @@ import (
 var password string
 
 var rootCmd = &cobra.Command{
-	Use:          "movistar",
+	Use:          "movistarcli",
 	Short:        "CLI for Movistar HGU router management",
 	Long:         "Control and configure your Movistar HGU router from the command line.",
 	SilenceUsage: true,
