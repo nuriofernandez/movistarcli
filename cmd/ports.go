@@ -94,13 +94,17 @@ var portsAddCmd = &cobra.Command{
 		if extEnd == 0 {
 			extEnd = portExtStart
 		}
+		intStart := portIntStart
+		if intStart == 0 {
+			intStart = portExtStart
+		}
 		port := hgu.OpenPort{
 			Name:              portName,
 			Protocol:          hgu.Protocol(portProtocol),
 			Address:           portAddress,
 			ExternalPortStart: portExtStart,
 			ExternalPortEnd:   extEnd,
-			InternalPortStart: portIntStart,
+			InternalPortStart: intStart,
 			Enabled:           portEnabled,
 			Interface:         portInterface,
 		}
@@ -149,7 +153,14 @@ var portsUpdateCmd = &cobra.Command{
 			port.Address = portAddress
 		}
 		if cmd.Flags().Changed("ext-start") {
+			original := port.ExternalPortStart
 			port.ExternalPortStart = portExtStart
+			if !cmd.Flags().Changed("ext-end") && port.ExternalPortEnd == original {
+				port.ExternalPortEnd = portExtStart
+			}
+			if !cmd.Flags().Changed("int-start") && port.InternalPortStart == original {
+				port.InternalPortStart = portExtStart
+			}
 		}
 		if cmd.Flags().Changed("ext-end") {
 			port.ExternalPortEnd = portExtEnd
@@ -273,7 +284,7 @@ var portsDisableCmd = &cobra.Command{
 
 func addPortFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&portName, "name", "", "rule name (max 16 chars)")
-	cmd.Flags().StringVar(&portProtocol, "protocol", "TCP", "protocol: TCP, UDP, or BOTH")
+	cmd.Flags().StringVar(&portProtocol, "protocol", "", "protocol: TCP, UDP, or BOTH")
 	cmd.Flags().StringVar(&portAddress, "address", "", "target device IP address")
 	cmd.Flags().IntVar(&portExtStart, "ext-start", 0, "external port range start")
 	cmd.Flags().IntVar(&portExtEnd, "ext-end", 0, "external port range end (defaults to ext-start)")
@@ -282,8 +293,8 @@ func addPortFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&portInterface, "interface", "ppp0.1", "WAN interface")
 	if cmd == portsAddCmd {
 		_ = cmd.MarkFlagRequired("name")
+		_ = cmd.MarkFlagRequired("protocol")
 		_ = cmd.MarkFlagRequired("address")
 		_ = cmd.MarkFlagRequired("ext-start")
-		_ = cmd.MarkFlagRequired("int-start")
 	}
 }
